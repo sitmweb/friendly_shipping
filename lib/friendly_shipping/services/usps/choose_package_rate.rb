@@ -22,7 +22,11 @@ module FriendlyShipping
 
           # Keep only rates with the package type of this package
           rates_with_this_package_type = rates_with_this_shipping_method.select do |r|
-            r.data[:box_name] == package_options.box_name
+            if r.shipping_method.service_code == "FIRST CLASS"
+              r.data[:first_class_mail_type] == package_options.first_class_mail_type
+            else
+              r.data[:box_name] == package_options.box_name
+            end
           end
 
           # Filter by our package's `hold_for_pickup` option

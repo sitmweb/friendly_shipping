@@ -33,9 +33,14 @@ module FriendlyShipping
           gift_card_flat_rate_envelope: 'Gift Card Flat Rate Envelope',
           window_flat_rate_envelope: 'Window Flat Rate Envelope',
           small_flat_rate_envelope: 'Small Flat Rate Envelope',
-          large_envelope: 'Large Envelope',
+          large_envelope: 'Large Envelope'
+        }.map { |k, v| "(?<#{k}>#{v})" }.join("|").freeze
+
+        FIRST_CLASS_MAIL_TYPES_REGEX = {
+          letter: 'Letter',
           parcel: 'Parcel',
-          postcards: 'Postcards'
+          postcards: 'Postcards',
+          package_service: 'Package Service'
         }.map { |k, v| "(?<#{k}>#{v})" }.join("|").freeze
 
         # We use this for identifying rates that use the Hold for Pickup service.
@@ -106,9 +111,15 @@ module FriendlyShipping
 
             # We find out the box name using a bit of Regex magic using named captures. See the `BOX_REGEX`
             # constant above.
-            box_name_match = service_name.match(/#{BOX_REGEX}/)
-            box_name = box_name_match ? box_name_match.named_captures.compact.keys.last.to_sym : :variable
-
+            if shipping_method.service_code == 'FIRST CLASS'
+              first_class_mail_type_match = service_name.match(/#{FIRST_CLASS_MAIL_TYPES_REGEX}/)
+              first_class_mail_type = if first_class_mail_type_match
+                                        first_class_mail_type_match.named_captures.compact.keys.last.to_sym
+                                      end
+            else
+              box_name_match = service_name.match(/#{BOX_REGEX}/)
+              box_name = box_name_match ? box_name_match.named_captures.compact.keys.last.to_sym : :variable
+            end
             # Combine all the gathered information in a FriendlyShipping::Rate object.
             # Careful: This rate is only for one package within the shipment, and we get multiple
             # rates per package for the different shipping method/box/hold for pickup combinations.
@@ -118,6 +129,7 @@ module FriendlyShipping
               data: {
                 package: package,
                 box_name: box_name,
+                first_class_mail_type: first_class_mail_type,
                 hold_for_pickup: hold_for_pickup,
                 days_to_delivery: days_to_delivery,
                 military: military,
